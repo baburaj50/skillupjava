@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/your-username/java-microservice.git'
+                git 'https://github.com/baburaj50/skillupjava.git'
             }
         }
 
