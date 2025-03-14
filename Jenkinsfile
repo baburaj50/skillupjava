@@ -1,16 +1,12 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = "your-dockerhub-username/java-microservice"
-        KUBE_DEPLOYMENT = "java-microservice-deployment"
-        SERVICE_PORT = "8080"
-    }
-
     stages {
         stage('Clone Repository') {
             steps {
-                git credentialsId: 'github-pat-id', url: 'https://github.com/baburaj50/skillupjava.git'
+                git branch: 'main', 
+                    credentialsId: '5dab2fe5-40fd-408a-a735-dfb6c26c122c', 
+                    url: 'https://github.com/baburaj50/skillupjava.git'
             }
         }
 
@@ -22,14 +18,14 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                sh 'docker build -t your-dockerhub-username/java-microservice .'
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 withDockerRegistry([credentialsId: '94b1f578-fc47-4f2d-b19e-2a94a1682447', url: '']) {
-                    sh 'docker push $IMAGE_NAME'
+                    sh 'docker push your-dockerhub-username/java-microservice'
                 }
             }
         }
@@ -37,19 +33,15 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
-                kubectl create deployment $KUBE_DEPLOYMENT --image=$IMAGE_NAME || \
-                kubectl set image deployment/$KUBE_DEPLOYMENT java-microservice=$IMAGE_NAME
-
-                kubectl expose deployment $KUBE_DEPLOYMENT --type=NodePort --port=$SERVICE_PORT
+                kubectl create deployment java-microservice-deployment --image=your-dockerhub-username/java-microservice || \
+                kubectl set image deployment/java-microservice-deployment java-microservice=your-dockerhub-username/java-microservice
                 """
             }
         }
 
         stage('Create Additional Pod') {
             steps {
-                sh """
-                kubectl run extra-pod --image=$IMAGE_NAME --port=$SERVICE_PORT
-                """
+                sh 'kubectl run extra-pod --image=your-dockerhub-username/java-microservice --port=8080'
             }
         }
     }
