@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/baburaj50/skillupjava.git'
+                git credentialsId: 'github-pat-id', url: 'https://github.com/baburaj50/skillupjava.git'
             }
         }
 
