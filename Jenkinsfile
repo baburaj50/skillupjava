@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKERHUB_USER = 'baburajkm'
+        IMAGE_NAME = 'java-microservice'
+    }
+
     stages {
         stage('Clone Repository') {
             steps {
@@ -18,30 +23,32 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t your-dockerhub-username/java-microservice .'
+                sh '''
+                docker build -t $DOCKERHUB_USER/$IMAGE_NAME .
+                '''
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 withDockerRegistry([credentialsId: '94b1f578-fc47-4f2d-b19e-2a94a1682447', url: '']) {
-                    sh 'docker push your-dockerhub-username/java-microservice'
+                    sh 'docker push $DOCKERHUB_USER/$IMAGE_NAME'
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh """
-                kubectl create deployment java-microservice-deployment --image=your-dockerhub-username/java-microservice || \
-                kubectl set image deployment/java-microservice-deployment java-microservice=your-dockerhub-username/java-microservice
-                """
+                sh '''
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+                '''
             }
         }
 
-        stage('Create Additional Pod') {
+        stage('Scale Deployment') {
             steps {
-                sh 'kubectl run extra-pod --image=your-dockerhub-username/java-microservice --port=8080'
+                sh 'kubectl scale deployment java-microservice-deployment --replicas=3'
             }
         }
     }
