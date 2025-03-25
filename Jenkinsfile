@@ -17,38 +17,38 @@ pipeline {
 
         stage('Build and Test') {
             steps {
-                sh 'mvn clean package'
+                bat 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                docker build -t $DOCKERHUB_USER/$IMAGE_NAME .
-                '''
+                bat """
+                docker build -t %DOCKERHUB_USER%/%IMAGE_NAME% .
+                """
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 withDockerRegistry([credentialsId: '94b1f578-fc47-4f2d-b19e-2a94a1682447', url: '']) {
-                    sh 'docker push $DOCKERHUB_USER/$IMAGE_NAME'
+                    bat 'docker push %DOCKERHUB_USER%/%IMAGE_NAME%'
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh '''
+                bat """
                 kubectl apply -f k8s/deployment.yaml
                 kubectl apply -f k8s/service.yaml
-                '''
+                """
             }
         }
 
         stage('Scale Deployment') {
             steps {
-                sh 'kubectl scale deployment java-microservice-deployment --replicas=3'
+                bat 'kubectl scale deployment java-microservice-deployment --replicas=3'
             }
         }
     }
