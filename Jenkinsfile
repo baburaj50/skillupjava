@@ -1,55 +1,79 @@
 pipeline {
     agent any
-
     environment {
-        DOCKERHUB_USER = 'baburajkm'
-        IMAGE_NAME = 'java-microservice'
+        DOCKER_IMAGE = "baburaj50/skillupjava:latest"
+        KUBE_DEPLOYMENT = "skillupjava-deployment"
+        APP_PORT = "8080"
     }
-
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', 
-                    credentialsId: '5dab2fe5-40fd-408a-a735-dfb6c26c122c', 
-                    url: 'https://github.com/baburaj50/skillupjava.git'
+                git 'https://github.com/baburaj50/skillupjava.git'
             }
         }
-
-        stage('Build and Test') {
+        stage('Build Application') {
             steps {
-                bat 'mvn clean package'
+                bat 'mvn clean package -DskipTests'
             }
         }
-
         stage('Build Docker Image') {
             steps {
-                bat """
-                docker build -t %DOCKERHUB_USER%/%IMAGE_NAME% .
-                """
+                bat 'docker build -t %DOCKER_IMAGE% .'
             }
         }
-
-        stage('Push to Docker Hub') {
+        stage('Push Docker Image') {
             steps {
-                withDockerRegistry([credentialsId: '94b1f578-fc47-4f2d-b19e-2a94a1682447', url: '']) {
-                    bat 'docker push %DOCKERHUB_USER%/%IMAGE_NAME%'
+                withDockerRegistry([credentialsId: 'docker-hub-credentials', url: '']) {
+                    bat 'docker push %DOCKER_IMAGE%'
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
             steps {
-                bat """
-                kubectl apply -f k8s/deployment.yaml
-                kubectl apply -f k8s/service.yaml
-                """
+                bat '''
+                echo Creating Kubernetes Deployment...
+                kubectl apply -f - <<EOF
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: %KUBE_DEPLOYMENT%
+                spec:
+                  replicas: 1
+                  selector:
+                    matchLabels:
+                      app: skillupjava
+                  template:
+                    metadata:
+                      labels:
+                        app: skillupjava
+                    spec:
+                      containers:
+                      - name: skillupjava
+                        image: %DOCKER_IMAGE%
+                        ports:
+                        - containerPort: %APP_PORT%
+                ---
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: skillupjava-service
+                spec:
+                  type: NodePort
+                  selector:
+                    app: skillupjava
+                  ports:
+                    - protocol: TCP
+                      port: 80
+                      targetPort: %APP_PORT%
+                      nodePort: 30080
+                EOF
+                '''
             }
         }
-
-        stage('Scale Deployment') {
-            steps {
-                bat 'kubectl scale deployment java-microservice-deployment --replicas=3'
-            }
+    }
+    post {
+        success {
+            echo "Deployment successful! Access the app at http://localhost:30080"
         }
     }
 }
